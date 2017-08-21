@@ -57,6 +57,7 @@ namespace osmscout {
     OpenGLMapData PathRenderer;
     OpenGLMapData ImageRenderer;
     OpenGLMapData TextRenderer;
+    OpenGLMapData CircleRenderer;
 
     TextLoader Textloader;
 

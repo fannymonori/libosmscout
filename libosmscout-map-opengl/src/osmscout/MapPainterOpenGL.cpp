@@ -89,6 +89,14 @@ namespace osmscout {
       return;
     }
 
+    CircleRenderer.LoadVertexShader("CircleVertexShader.vert");
+    CircleRenderer.LoadFragmentShader("CircleFragmentShader.frag");
+    success = CircleRenderer.InitContext();
+    if (!success) {
+      std::cerr << "Could not initialize context for ending caps rendering!" << std::endl;
+      return;
+    }
+
     AreaRenderer.clearData();
     AreaRenderer.SetVerticesSize(6);
     GroundTileRenderer.clearData();
@@ -102,6 +110,8 @@ namespace osmscout {
     ImageRenderer.SetTextureHeight(7);
     TextRenderer.clearData();
     TextRenderer.SetVerticesSize(11);
+    CircleRenderer.clearData();
+    CircleRenderer.SetVerticesSize(7);
   }
 
   void osmscout::MapPainterOpenGL::LoadData(const osmscout::MapData &data, const osmscout::MapParameter &parameter,
@@ -145,6 +155,27 @@ namespace osmscout {
     AreaRenderer.AddUniform("centerLon", Center.GetLon());
     AreaRenderer.AddUniform("magnification", Magnification.GetMagnification());
     AreaRenderer.AddUniform("dpi", dpi);
+
+    CircleRenderer.SwapData();
+
+    CircleRenderer.BindBuffers();
+    CircleRenderer.LoadProgram();
+    CircleRenderer.LoadVertices();
+
+    CircleRenderer.SetProjection(width, height);
+    CircleRenderer.SetModel();
+    CircleRenderer.SetView(lookX, lookY);
+    CircleRenderer.AddAttrib("position", 3, GL_FLOAT, 0);
+    CircleRenderer.AddAttrib("color", 3, GL_FLOAT, 3 * sizeof(GLfloat));
+    CircleRenderer.AddAttrib("diameter", 1, GL_FLOAT, 6 * sizeof(GLfloat));
+
+    CircleRenderer.AddUniform("windowWidth", width);
+    CircleRenderer.AddUniform("windowHeight", height);
+    CircleRenderer.AddUniform("centerLat", Center.GetLat());
+    CircleRenderer.AddUniform("centerLon", Center.GetLon());
+    CircleRenderer.AddUniform("magnification", Magnification.GetMagnification());
+    CircleRenderer.AddUniform("dpi", dpi);
+    CircleRenderer.AddUniform("z", 0.001);
 
     GroundTileRenderer.SwapData();
 
@@ -701,6 +732,29 @@ namespace osmscout {
           for (unsigned int n = 0; n < 6; n++)
             PathRenderer.AddNewElement(num + n);
         }
+
+        if(lineStyles[l]->GetEndCap() == LineStyle::capRound) {
+          CircleRenderer.AddNewVertex(way->nodes[0].GetLon());
+          CircleRenderer.AddNewVertex(way->nodes[0].GetLat());
+          CircleRenderer.AddNewVertex(z);
+          CircleRenderer.AddNewVertex(color.GetR());
+          CircleRenderer.AddNewVertex(color.GetG());
+          CircleRenderer.AddNewVertex(color.GetB());
+          CircleRenderer.AddNewVertex(lineWidth);
+
+          CircleRenderer.AddNewElement(CircleRenderer.GetVerticesNumber() - 1);
+
+          CircleRenderer.AddNewVertex(way->nodes[way->nodes.size() - 1].GetLon());
+          CircleRenderer.AddNewVertex(way->nodes[way->nodes.size() - 1].GetLat());
+          CircleRenderer.AddNewVertex(z);
+          CircleRenderer.AddNewVertex(color.GetR());
+          CircleRenderer.AddNewVertex(color.GetG());
+          CircleRenderer.AddNewVertex(color.GetB());
+          CircleRenderer.AddNewVertex(lineWidth);
+
+          CircleRenderer.AddNewElement(CircleRenderer.GetVerticesNumber() - 1);
+        }
+
       }
     }
   }
@@ -1260,6 +1314,22 @@ namespace osmscout {
     AreaRenderer.SetModel();
     AreaRenderer.SetView(lookX, lookY);
     AreaRenderer.Draw();
+
+    glBindVertexArray(CircleRenderer.getVAO());
+    glUseProgram(CircleRenderer.getShaderProgram());
+
+    CircleRenderer.AddUniform("windowWidth", width);
+    CircleRenderer.AddUniform("windowHeight", height);
+    CircleRenderer.AddUniform("centerLat", Center.GetLat());
+    CircleRenderer.AddUniform("centerLon", Center.GetLon());
+    CircleRenderer.AddUniform("magnification", Magnification.GetMagnification());
+    CircleRenderer.AddUniform("dpi", dpi);
+    CircleRenderer.AddUniform("z", 0.001);
+
+    CircleRenderer.SetProjection(width, height);
+    CircleRenderer.SetModel();
+    CircleRenderer.SetView(lookX, lookY);
+    CircleRenderer.DrawPoint();
 
     glBindVertexArray(PathRenderer.getVAO());
     glUseProgram(PathRenderer.getShaderProgram());
